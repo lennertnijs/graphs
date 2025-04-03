@@ -23,50 +23,17 @@ public class Main {
             total++;
             try{
                 selection = selector.attempt(graph);
-                checkUniqueMapping(selection);
+                System.out.println(selection);
             }catch(Exception e){
+                e.printStackTrace();
                 count++;
-                //System.out.println("nope");
             }
         }
-        writeToCSV("D:/secret santa/untitled/src/test/java/results.csv", selections);
+
         System.out.println("Duration: " + (System.currentTimeMillis() - start));
         System.out.println("Duration per graph: " + (float)(System.currentTimeMillis() - start) / total);
         System.out.println("Impossible ones: " + count);
         System.out.println("Total ones: " + total);
-    }
-
-    public static void checkUniqueMapping(Map<String, List<String>> selection)
-    {
-        Set<String> keys = new HashSet<>();
-        Set<String> values = new HashSet<>();
-        for(String key : selection.keySet()){
-            String value = selection.get(key).get(0);
-            keys.add(key);
-            values.add(value);
-        }
-        assert(keys.size() == values.size());
-    }
-
-    public static void writeToCSV(String filename, List<Map<String, List<String>>> data) {
-        try (FileWriter writer = new FileWriter(filename)) {
-            for (Map<String, List<String>> item : data) {
-                for(String key : item.keySet()){
-                    String s = null;
-                    if(item.get(key).size() == 1){
-                        s = item.get(key).getFirst();
-                    }else{
-                        s = "this one aint solvable dawg";
-                    }
-                    writer.append(key).append(":").append(s).append(",");
-                }
-                writer.append("\n"); // Write each string to a new line
-            }
-            System.out.println("Data successfully written to " + filename);
-        } catch (IOException e) {
-            System.out.println("An error occurred while writing to the file.");
-            e.printStackTrace();
-        }
     }
 
     private static List<IGraph<String>> loadGraphs()
@@ -74,7 +41,7 @@ public class Main {
         List<IGraph<String>> graphs = new ArrayList<>();
         System.out.println(System.getProperty("user.dir"));
 
-        String filePath = "D:/secret santa/untitled/src/test/java/shurlyPossible3.csv";
+        String filePath = "D:/secret santa/untitled/src/test/java/configurations.csv";
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             br.mark(1);
             if (br.read() != '\uFEFF') {

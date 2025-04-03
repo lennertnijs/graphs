@@ -74,17 +74,11 @@ public final class SecretSantaSelector {
             Set<String> F = new HashSet<>();
             Map<String, List<List<String>>> bfsPaths = new HashMap<>();
             runBFS(U, V, edges, matchedEdges, F, bfsPaths);
-            if(F.isEmpty()){
-                if(!U.isEmpty() || !V.isEmpty()) {
-                    throw new IllegalArgumentException("error my boy");
-                }
-                break;
-            } // no starts found -> return
+            if(F.isEmpty()) break;
 
             HashSet<String> dfsUsedVertices = new HashSet<>();
-            Map<String, List<String>> usedEdges = new HashMap<>();
             for(String f : F){
-                List<String> path = selectPath(dfsUsedVertices, usedEdges, U, bfsPaths.get(f));
+                List<String> path = selectPath(dfsUsedVertices, U, bfsPaths.get(f));
                 if(path.isEmpty()) continue;
                 U.remove(path.getFirst());
                 V.remove(f);
@@ -114,9 +108,6 @@ public final class SecretSantaSelector {
             Set<String> F,
             Map<String, List<List<String>>> paths)
     {
-        for(String key : matched.keySet()){
-            if(matched.get(key).size() > 1) System.out.println(key + matched.get(key));
-        }
         boolean UtoV = true;
         Queue<List<String>> queue = new LinkedList<>(U.stream().map(List::of).toList());
         while(!queue.isEmpty()){
@@ -153,7 +144,6 @@ public final class SecretSantaSelector {
     }
 
     private List<String> selectPath(Set<String> used,
-                                    Map<String, List<String>> usedEdges,
                                     List<String> U,
                                     List<List<String>> paths)
     {
