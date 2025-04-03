@@ -82,8 +82,9 @@ public final class SecretSantaSelector {
             } // no starts found -> return
 
             HashSet<String> dfsUsedVertices = new HashSet<>();
+            Map<String, List<String>> usedEdges = new HashMap<>();
             for(String f : F){
-                List<String> path = selectPath(dfsUsedVertices, U, bfsPaths.get(f));
+                List<String> path = selectPath(dfsUsedVertices, usedEdges, U, bfsPaths.get(f));
                 if(path.isEmpty()) continue;
                 U.remove(path.getFirst());
                 V.remove(f);
@@ -113,6 +114,9 @@ public final class SecretSantaSelector {
             Set<String> F,
             Map<String, List<List<String>>> paths)
     {
+        for(String key : matched.keySet()){
+            if(matched.get(key).size() > 1) System.out.println(key + matched.get(key));
+        }
         boolean UtoV = true;
         Queue<List<String>> queue = new LinkedList<>(U.stream().map(List::of).toList());
         while(!queue.isEmpty()){
@@ -148,13 +152,16 @@ public final class SecretSantaSelector {
         return list;
     }
 
-    private List<String> selectPath(Set<String> used, List<String> unmatchedUVertices, List<List<String>> paths)
+    private List<String> selectPath(Set<String> used,
+                                    Map<String, List<String>> usedEdges,
+                                    List<String> U,
+                                    List<List<String>> paths)
     {
-        for(List<String> option : paths){
-            if(unmatchedUVertices.contains(option.getFirst()) && used.stream().noneMatch(option::contains)){
-                used.addAll(option);
-                return option;
-            }
+        for(List<String> path : paths){
+            if(!U.contains(path.getFirst())) continue;
+            if(used.stream().anyMatch(path::contains)) continue;
+            used.addAll(path);
+            return path;
         }
         return new ArrayList<>();
     }

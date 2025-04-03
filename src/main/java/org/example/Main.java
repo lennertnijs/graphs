@@ -23,7 +23,6 @@ public class Main {
             total++;
             try{
                 selection = selector.attempt(graph);
-                System.out.println(selection);
                 checkUniqueMapping(selection);
             }catch(Exception e){
                 count++;
