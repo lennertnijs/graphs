@@ -74,7 +74,7 @@ public class Main {
         List<IGraph<String>> graphs = new ArrayList<>();
         System.out.println(System.getProperty("user.dir"));
 
-        String filePath = "D:/secret santa/untitled/src/test/java/configurations.csv";
+        String filePath = "D:/secret santa/untitled/src/test/java/shurlyPossible3.csv";
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             br.mark(1);
             if (br.read() != '\uFEFF') {
