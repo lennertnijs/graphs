@@ -58,6 +58,8 @@ public final class GraphTest
             System.out.println("An error occurred while writing to the file.");
             e.printStackTrace();
         }
+
+
     }
 
     private List<IGraph<String>> loadGraphs()
