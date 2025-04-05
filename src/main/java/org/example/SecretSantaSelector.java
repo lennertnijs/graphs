@@ -18,57 +18,53 @@ public final class SecretSantaSelector {
      * graph. Then runs Hopcroft-Karp's algorithm to solve.
      * Note that to discern the same vertices in U and V, a "2" is added for vertices in V.
      */
-    public Map<String, List<String>> findMaximumMatching(IGraph<String> graph)
+    public SecretSantaSolution findMaximumMatching(IGraph<String> graph)
     {
         Set<String> U = graph.getVertices();
         Set<String> V = new HashSet<>(graph.vertexCount());
         Map<String, List<String>> edges = new HashMap<>(graph.vertexCount());
         for(String vertex : graph.getVertices()){
-            V.add(vertex + "]");
+            V.add(vertex + SecretSantaSolution.SEPARATOR);
             edges.put(vertex, new ArrayList<>());
             for(String s : graph.getSuccessors(vertex)){
-                edges.get(vertex).add(s + "]");
+                edges.get(vertex).add(s + SecretSantaSolution.SEPARATOR);
             }
         }
         for(String v : V){
             edges.put(v, new ArrayList<>());
         }
-        return runHopCroftKarp(U, V, edges);
+        Map<String, List<String>> solution = hopCroftKarp(U, V, edges);
+        return new SecretSantaSolution(solution);
     }
 
     /**
-     * Runs Hopcroft-Karp's algorithm. In short, the following steps are done:
-     * Setup:
-     * - vertices in U and V are considered "unmarked"
-     * Step 1: a BFS search algorithm is used to construct paths from unmarked elements of U to unmarked elements
-     *         to V. The layer of BFS at which the first unmarked V is found, it will complete all paths and then
-     *         stop the BFS. F will contain all elements from V found at said layer k.
-     * Step 2: for each element e in F, the algorithm will walk through all the paths from the BFS step that finished
-     *         in the element e. If a path is found, both the start node (from in U) and the end node (from in V) are
-     *         marked as "marked", all the intermediate nodes are considered "gone" for the remainder of this DFs step
-     *         and all the edges on the path are flipped (marked -> unmarked and vice versa)
-     * The algorithm will return the marked edges, which is exactly the thing we're looking for.
-     * P.S.: because of the nature of the algorithm, edges that are unmarked will always be followed U -> V,
-     * while edges that are marked will always be followed from V -> U.
-     * P.P.S.: any traversal, both in BFS and DFS, will need to keep in mind that adjacent edges should always be
-     * opposite (so from marked -> unmarked -> ...)
+     * Runs Hopcroft-Karp's algorithm, which is a 2-step algorithm for finding a maximal matching.
+     * In step 1, using BFS, the algorithm finds unmatched points in V to match up to unmatched points in U.
+     * This is possible thanks to the tree formed in this step.
+     * *
+     * In step 2, the algorithm will traverse back up these paths in opposite direction (so, V -> U) to finalize
+     * the path. During the ENTIRE step (so, for all paths found in step 1), will it keep track of a set of used
+     * vertices in the graph. No path is allowed to use any vertices from this set, so when a new path is selected
+     * it locks all the nodes it traverses over. On top of that, all edges on the path are flipped directionally,
+     * so edges from U->V now go from V->U and vice versa. Note that edges are also not allowed to be re-used for
+     * the entire iteration, but that's already enforced by the vertex rule. After locking in a path, the start
+     * and end point are removed from V and U respectively.
+     * *
+     * If at any point step 1 results in no new endpoints, the algorithm is done. This can both mean the graph
+     * has been solved (a maximal matching has been found), or no such matching exists.
+     * @param U The set of vertices in U. Is changed.
+     * @param V The set of vertices in V. Is changed.
+     * @param edges The map of edges between U and V. Is changed.
+     *
+     * @return The final map of edges.
      */
-    private Map<String, List<String>> runHopCroftKarp(Set<String> U,
-                                                          Set<String> V,
-                                                          Map<String, List<String>> edges)
+    private Map<String, List<String>> hopCroftKarp(Set<String> U, Set<String> V, Map<String, List<String>> edges)
     {
         while(true){
-            List<Node<String>> endpoints = runBFS(U, V, edges);
-            if(endpoints.isEmpty()){
-                if(!U.isEmpty() || !V.isEmpty()){
-                    throw new IllegalArgumentException();
-                }
-                break;
-            }
-
-            HashSet<String> usedVertices = new HashSet<>();
+            List<Node<String>> endpoints = findEndpoints(U, V, edges);
+            if(endpoints.isEmpty()) break;
+            Set<String> usedVertices = new HashSet<>();
             for(Node<String> endpoint : endpoints){
-                if(!V.contains(endpoint.value())) continue;
                 if(anyInPath(usedVertices, endpoint.copy())) continue;
                 V.remove(endpoint.value());
                 while(endpoint.parent() != null){
@@ -88,13 +84,15 @@ public final class SecretSantaSelector {
 
     /**
      * Runs breadth-first search to find all possible paths from elements in U to elements in V and returns said
-     * elements in V as tree nodes, whereby using .parent() will rebuild the found path from V -> U.
+     * elements in V as tree nodes, whereby using .parent() will rebuild the found path back up from V -> U.
+     * Note that traversal over a path will always go back and forth between U/V, ping pong style.
      * @param U The set of *yet* unmatched vertices in U. Remains unchanged.
      * @param V The set of *yet* unmatched vertices in V. Remains unchanged.
+     * @param edges The map of edges. Remains unchanged.
      *
      * @return The list of elements in V that were found to have a path to (from U), in tree Node form.
      */
-    private List<Node<String>> runBFS(Set<String> U, Set<String> V, Map<String, List<String>> edges)
+    private List<Node<String>> findEndpoints(Set<String> U, Set<String> V, Map<String, List<String>> edges)
     {
         List<Node<String>> endpoints = new ArrayList<>();
         boolean UtoV = true;
@@ -139,14 +137,5 @@ public final class SecretSantaSelector {
             node = node.parent();
         }
         return false;
-    }
-
-    private List<String> getReverse(String s, Map<String, List<String>> map)
-    {
-        List<String> list = new ArrayList<>();
-        for(String key : map.keySet()){
-            if(map.get(key).contains(s)) list.add(key);
-        }
-        return list;
     }
 }

@@ -23,15 +23,9 @@ public class Main {
         List<IGraph<String>> graphs = loadGraphs();
         long start = System.currentTimeMillis();
         for (IGraph<String> graph : graphs) {
-//            for(String vertex : graph.getVertices()){
-//                System.out.printf("Vertex: %s -> %s\n", vertex, graph.getSuccessors(vertex));
-//            }
             total++;
-            try {
-                selector.findMaximumMatching(graph);
-            } catch (Exception e) {
-                    impossible++;
-                    //e.printStackTrace();
+            if(!selector.findMaximumMatching(graph).isSolved()){
+                impossible++;
             }
         }
         System.out.printf("Total runtime: %d\n", System.currentTimeMillis() - start);
@@ -60,11 +54,7 @@ public class Main {
         for(int i = 0; i < iter; i++){
             long start = System.currentTimeMillis();
             for(IGraph<String> graph : graphs){
-                try{
-                    selector.findMaximumMatching(graph);
-                }catch(Exception e){
-                    // do nothing
-                }
+                selector.findMaximumMatching(graph);
             }
             total += (System.currentTimeMillis() - start);
         }
