@@ -13,47 +13,25 @@ public final class SecretSantaSelector {
 
     }
 
-//    public Map<String, List<String>> attempt(IGraph<String> graph)
-//    {
-//        Set<String> U = new ArrayList<>(graph.vertexCount());
-//        List<String> V = new ArrayList<>(graph.vertexCount());
-//        Map<String, List<String>> edges = new HashMap<>();
-//        createBipartite(graph, U, V, edges);
-//        return runHopCroftKarp(U, V, edges);
-//    }
-
-    public Map<String, List<String>> attemptTree(IGraph<String> graph)
-    {
-        Set<String> U = new HashSet<>(graph.vertexCount());
-        Set<String> V = new HashSet<>(graph.vertexCount());
-        Map<String, List<String>> edges = new HashMap<>();
-        createBipartite(graph, U, V, edges);
-        return runHopCroftKarpTree(U, V, edges);
-    }
-
     /**
-     * Creates a bipartite from a given graph
-     * A bipartite will hold all the vertices in both U (left side) and V (right side), with the edges in the graph
-     * now mapping from U to V (so within U nor V there aren't any edges)
+     * Creates a bipartite graph of the given input graph, setting both U and V to the set of vertices of the input
+     * graph. Then runs Hopcroft-Karp's algorithm to solve.
+     * Note that to discern the same vertices in U and V, a "2" is added for vertices in V.
      */
-    private void createBipartite(IGraph<String> graph,
-                                 Set<String> U,
-                                 Set<String> V,
-                                 Map<String, List<String>> edges)
+    public Map<String, List<String>> findMaximumMatching(IGraph<String> graph)
     {
-        Set<String> vertices = graph.getVertices();
-        for(String s : vertices){
-            U.add(s);
-            V.add(s + "2");
-            for(String successor : graph.getSuccessors(s)){
-                if(!edges.containsKey(s)){
-                    edges.put(s, new ArrayList<>());
-                }
-                edges.get(s).add(successor + "2");
+        Set<String> U = graph.getVertices();
+        Set<String> V = new HashSet<>(graph.vertexCount());
+        Map<String, List<String>> edges = new HashMap<>(graph.vertexCount());
+        for(String vertex : graph.getVertices()){
+            V.add(vertex + "2");
+            edges.put(vertex, new ArrayList<>());
+            for(String s : graph.getSuccessors(vertex)){
+                edges.get(vertex).add(s + "2");
             }
         }
+        return runHopCroftKarp(U, V, edges);
     }
-
 
     /**
      * Runs Hopcroft-Karp's algorithm. In short, the following steps are done:
@@ -72,95 +50,16 @@ public final class SecretSantaSelector {
      * P.P.S.: any traversal, both in BFS and DFS, will need to keep in mind that adjacent edges should always be
      * opposite (so from marked -> unmarked -> ...)
      */
-    private Map<String, List<String>> runHopCroftKarp(List<String> U,
-                                                      List<String> V,
-                                                      Map<String, List<String>> edges)
-    {
-        Map<String, List<String>> matchedEdges = new HashMap<>();
-        for(String key : edges.keySet()){
-            matchedEdges.put(key, new ArrayList<>());
-        }
-        while(true){
-            Set<String> F = new HashSet<>();
-            Map<String, List<List<String>>> bfsPaths = new HashMap<>();
-            runBFS(U, V, edges, matchedEdges, F, bfsPaths);
-            if(F.isEmpty()){
-                if(!U.isEmpty() || !V.isEmpty()){
-                    throw new IllegalArgumentException();
-                }
-                break;
-            }
-
-            HashSet<String> dfsUsedVertices = new HashSet<>();
-            for(String f : F){
-                List<String> path = selectPath(dfsUsedVertices, U, bfsPaths.get(f));
-                if(path.isEmpty()) continue;
-                U.remove(path.getFirst());
-                V.remove(f);
-                for(int i = 1; i < path.size(); i++){
-                    String start = path.get(i - 1);
-                    String next = path.get(i);
-                    if(edges.containsKey(start)){
-                        // start = a, b, c, d, next = a2, b2, c2, d2
-                        edges.get(start).remove(next);
-                        matchedEdges.get(start).add(next);
-                    }else{
-                        // start = a2, b2, c2, d2, next = a, b, c, d
-                        matchedEdges.get(next).remove(start);
-                        edges.get(next).add(start);
-                    }
-                }
-            }
-        }
-        return matchedEdges;
-    }
-
-    private void runBFS(
-            List<String> U,
-            List<String> V,
-            Map<String, List<String>> unmatched,
-            Map<String, List<String>> matched,
-            Set<String> F,
-            Map<String, List<List<String>>> paths)
-    {
-        boolean UtoV = true;
-        Queue<List<String>> queue = new LinkedList<>(U.stream().map(List::of).toList());
-        while(!queue.isEmpty()){
-            int queueSize = queue.size();
-            for(int i = 0; i < queueSize; i++){
-                List<String> path = queue.poll();
-                String last = path.getLast();
-                List<String> nextOptions = UtoV ? unmatched.get(last) : getReverse(last, matched);
-                if(nextOptions == null) continue;
-                for(String next : nextOptions){
-                    if(path.contains(next)) continue;
-                    List<String> copy = new ArrayList<>(path);
-                    copy.add(next);
-                    if(!UtoV || !V.contains(next)){
-                        queue.add(copy);
-                    }else{
-                        if(!paths.containsKey(next)) paths.put(next, new ArrayList<>());
-                        paths.get(next).add(copy);
-                        F.add(next);
-                    }
-                }
-            }
-            if(!F.isEmpty()) return;
-            UtoV  = !UtoV;
-        }
-    }
-
-    private Map<String, List<String>> runHopCroftKarpTree(Set<String> U,
+    private Map<String, List<String>> runHopCroftKarp(Set<String> U,
                                                           Set<String> V,
-                                                          Map<String, List<String>> edges)
+                                                          Map<String, List<String>> unmatchedEdges)
     {
         Map<String, List<String>> matchedEdges = new HashMap<>();
-        for(String key : edges.keySet()){
+        for(String key : unmatchedEdges.keySet()){
             matchedEdges.put(key, new ArrayList<>());
         }
         while(true){
-            List<Node<String>> endpoints = new ArrayList<>();
-            runBFS(U, V, edges, matchedEdges, endpoints);
+            List<Node<String>> endpoints = runBFS(U, V, unmatchedEdges, matchedEdges);
             if(endpoints.isEmpty()){
                 if(!U.isEmpty() || !V.isEmpty()){
                     throw new IllegalArgumentException();
@@ -189,12 +88,12 @@ public final class SecretSantaSelector {
                 while(endpoint.parent() != null){
                     String start = endpoint.value();
                     String next = endpoint.parent().value();
-                    if(edges.containsKey(next)){
-                        edges.get(next).remove(start);
+                    if(unmatchedEdges.containsKey(next)){
+                        unmatchedEdges.get(next).remove(start);
                         matchedEdges.get(next).add(start);
                     }else{
                         matchedEdges.get(start).remove(next);
-                        edges.get(start).add(next);
+                        unmatchedEdges.get(start).add(next);
                     }
                     usedVertices.add(start);
                     endpoint = endpoint.parent();
@@ -205,12 +104,21 @@ public final class SecretSantaSelector {
         return matchedEdges;
     }
 
-    private void runBFS(Set<String> U,
-                        Set<String> V,
-                        Map<String, List<String>> unmatched,
-                        Map<String, List<String>> matched,
-                        List<Node<String>> endpoints)
+    /**
+     * Runs breadth-first search to find all possible paths from elements in U to elements in V and returns said
+     * elements in V as tree nodes, whereby using .parent() will rebuild the found path from V -> U.
+     * @param U The set of *yet* unmatched vertices in U. Remains unchanged.
+     * @param V The set of *yet* unmatched vertices in V. Remains unchanged.
+     * @param unmatched The set of unmatched edges (so from U -> V).
+     * @param matched The set of matched edges (so from V -> U).
+     *
+     * @return The list of elements in V that were found to have a path to (from U), in tree Node form.
+     */
+    private List<Node<String>> runBFS(Set<String> U, Set<String> V,
+                                      Map<String, List<String>> unmatched,
+                                      Map<String, List<String>> matched)
     {
+        List<Node<String>> endpoints = new ArrayList<>();
         boolean UtoV = true;
         Queue<Node<String>> queue = new LinkedList<>();
         for(String u : U){
@@ -219,31 +127,35 @@ public final class SecretSantaSelector {
         while(!queue.isEmpty()){
             int queueSize = queue.size();
             for(int i = 0; i < queueSize; i++){
-                Node<String> node = queue.poll();
-                List<String> nextOptions = UtoV ? unmatched.get(node.value()) : getReverse(node.value(), matched);
-                if(nextOptions == null) continue;
-                for(String next : nextOptions){
-                    Node<String> copy = node.copy();
-                    boolean alreadyVisited = false;
-                    while(copy != null){
-                        if(copy.value().equals(next)){
-                            alreadyVisited = true;
-                            break;
-                        }
-                        copy = copy.parent();
-                    }
-                    if(alreadyVisited) continue;
-                    Node<String> nextNode = new Node<>(node, next);
-                    if(!UtoV || !V.contains(next)){
-                        queue.add(nextNode);
-                    }else{
+                Node<String> current = queue.poll();
+                List<String> nextList = UtoV
+                        ? unmatched.get(current.value())
+                        : getReverse(current.value(), matched);
+                if(nextList == null) continue;
+                for(String next : nextList){
+                    if(isInPath(next, current.copy())) continue;
+                    Node<String> nextNode = new Node<>(current, next);
+                    boolean isUnmatchedInV = UtoV && V.contains(next);
+                    if(isUnmatchedInV){
                         endpoints.add(nextNode);
+                    }else{
+                        queue.add(nextNode);
                     }
                 }
             }
-            if(!endpoints.isEmpty()) return;
+            if(!endpoints.isEmpty()) break;
             UtoV  = !UtoV;
         }
+        return endpoints;
+    }
+
+    private boolean isInPath(String value, Node<String> node)
+    {
+        while(node != null){
+            if(node.value().equals(value)) return true;
+            node = node.parent();
+        }
+        return false;
     }
 
     private List<String> getReverse(String s, Map<String, List<String>> map)
@@ -253,18 +165,5 @@ public final class SecretSantaSelector {
             if(map.get(key).contains(s)) list.add(key);
         }
         return list;
-    }
-
-    private List<String> selectPath(Set<String> used,
-                                    List<String> U,
-                                    List<List<String>> paths)
-    {
-        for(List<String> path : paths){
-            if(!U.contains(path.getFirst())) continue;
-            if(used.stream().anyMatch(path::contains)) continue;
-            used.addAll(path);
-            return path;
-        }
-        return new ArrayList<>();
     }
 }
