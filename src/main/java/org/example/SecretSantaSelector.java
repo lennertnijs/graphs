@@ -24,11 +24,14 @@ public final class SecretSantaSelector {
         Set<String> V = new HashSet<>(graph.vertexCount());
         Map<String, List<String>> edges = new HashMap<>(graph.vertexCount());
         for(String vertex : graph.getVertices()){
-            V.add(vertex + "2");
+            V.add(vertex + "]");
             edges.put(vertex, new ArrayList<>());
             for(String s : graph.getSuccessors(vertex)){
-                edges.get(vertex).add(s + "2");
+                edges.get(vertex).add(s + "]");
             }
+        }
+        for(String v : V){
+            edges.put(v, new ArrayList<>());
         }
         return runHopCroftKarp(U, V, edges);
     }
@@ -52,14 +55,10 @@ public final class SecretSantaSelector {
      */
     private Map<String, List<String>> runHopCroftKarp(Set<String> U,
                                                           Set<String> V,
-                                                          Map<String, List<String>> unmatchedEdges)
+                                                          Map<String, List<String>> edges)
     {
-        Map<String, List<String>> matchedEdges = new HashMap<>();
-        for(String key : unmatchedEdges.keySet()){
-            matchedEdges.put(key, new ArrayList<>());
-        }
         while(true){
-            List<Node<String>> endpoints = runBFS(U, V, unmatchedEdges, matchedEdges);
+            List<Node<String>> endpoints = runBFS(U, V, edges);
             if(endpoints.isEmpty()){
                 if(!U.isEmpty() || !V.isEmpty()){
                     throw new IllegalArgumentException();
@@ -70,38 +69,21 @@ public final class SecretSantaSelector {
             HashSet<String> usedVertices = new HashSet<>();
             for(Node<String> endpoint : endpoints){
                 if(!V.contains(endpoint.value())) continue;
-                Node<String> copy = endpoint.copy();
-                boolean skip = false;
-                boolean UtoV = false;
-                while(copy.parent() != null){
-                    if(usedVertices.contains(copy.value())){
-                        skip = true;
-                        break;
-                    }
-                    copy = copy.parent();
-                    UtoV = !UtoV;
-                }
-                if(usedVertices.contains(copy.value())) skip = true;
-                if(skip) continue;
-                U.remove(copy.value());
+                if(anyInPath(usedVertices, endpoint.copy())) continue;
                 V.remove(endpoint.value());
                 while(endpoint.parent() != null){
                     String start = endpoint.value();
                     String next = endpoint.parent().value();
-                    if(unmatchedEdges.containsKey(next)){
-                        unmatchedEdges.get(next).remove(start);
-                        matchedEdges.get(next).add(start);
-                    }else{
-                        matchedEdges.get(start).remove(next);
-                        unmatchedEdges.get(start).add(next);
-                    }
+                    edges.get(next).remove(start);
+                    edges.get(start).add(next);
                     usedVertices.add(start);
                     endpoint = endpoint.parent();
                 }
                 usedVertices.add(endpoint.value());
+                U.remove(endpoint.value());
             }
         }
-        return matchedEdges;
+        return edges;
     }
 
     /**
@@ -109,14 +91,10 @@ public final class SecretSantaSelector {
      * elements in V as tree nodes, whereby using .parent() will rebuild the found path from V -> U.
      * @param U The set of *yet* unmatched vertices in U. Remains unchanged.
      * @param V The set of *yet* unmatched vertices in V. Remains unchanged.
-     * @param unmatched The set of unmatched edges (so from U -> V).
-     * @param matched The set of matched edges (so from V -> U).
      *
      * @return The list of elements in V that were found to have a path to (from U), in tree Node form.
      */
-    private List<Node<String>> runBFS(Set<String> U, Set<String> V,
-                                      Map<String, List<String>> unmatched,
-                                      Map<String, List<String>> matched)
+    private List<Node<String>> runBFS(Set<String> U, Set<String> V, Map<String, List<String>> edges)
     {
         List<Node<String>> endpoints = new ArrayList<>();
         boolean UtoV = true;
@@ -128,11 +106,7 @@ public final class SecretSantaSelector {
             int queueSize = queue.size();
             for(int i = 0; i < queueSize; i++){
                 Node<String> current = queue.poll();
-                List<String> nextList = UtoV
-                        ? unmatched.get(current.value())
-                        : getReverse(current.value(), matched);
-                if(nextList == null) continue;
-                for(String next : nextList){
+                for(String next : edges.get(current.value())){
                     if(isInPath(next, current.copy())) continue;
                     Node<String> nextNode = new Node<>(current, next);
                     boolean isUnmatchedInV = UtoV && V.contains(next);
@@ -153,6 +127,15 @@ public final class SecretSantaSelector {
     {
         while(node != null){
             if(node.value().equals(value)) return true;
+            node = node.parent();
+        }
+        return false;
+    }
+
+    private boolean anyInPath(Set<String> values, Node<String> node)
+    {
+        while(node != null){
+            if(values.contains(node.value())) return true;
             node = node.parent();
         }
         return false;

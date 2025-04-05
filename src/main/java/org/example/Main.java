@@ -12,7 +12,7 @@ public class Main {
     public static void main(String[] args)
     {
         //GraphGenerator.generateAndWrite(1_000, "large");
-        runIterTest();
+        runSingleTest();
     }
 
     public static void runSingleTest()
@@ -23,12 +23,15 @@ public class Main {
         List<IGraph<String>> graphs = loadGraphs();
         long start = System.currentTimeMillis();
         for (IGraph<String> graph : graphs) {
+//            for(String vertex : graph.getVertices()){
+//                System.out.printf("Vertex: %s -> %s\n", vertex, graph.getSuccessors(vertex));
+//            }
             total++;
             try {
                 selector.findMaximumMatching(graph);
             } catch (Exception e) {
                     impossible++;
-                    e.printStackTrace();
+                    //e.printStackTrace();
             }
         }
         System.out.printf("Total runtime: %d\n", System.currentTimeMillis() - start);
@@ -73,7 +76,7 @@ public class Main {
         List<IGraph<String>> graphs = new ArrayList<>();
         // System.out.println(System.getProperty("user.dir"));
 
-        String filePath = "D:/secret santa/untitled/src/test/java/shurlyPossible3.csv";
+        String filePath = "D:/secret santa/untitled/src/test/java/configurations.csv";
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             br.mark(1);
             if (br.read() != '\uFEFF') {
