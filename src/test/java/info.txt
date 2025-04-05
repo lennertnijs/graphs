@@ -1,0 +1,5 @@
+issue.csv
+F = 40
+F = 1 (q21)
+F = 0
+impossible

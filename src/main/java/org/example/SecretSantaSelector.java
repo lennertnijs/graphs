@@ -1,6 +1,7 @@
 package org.example;
 
 import graph.IGraph;
+import tree.Node;
 
 import java.util.*;
 
@@ -12,13 +13,22 @@ public final class SecretSantaSelector {
 
     }
 
-    public Map<String, List<String>> attempt(IGraph<String> graph)
+//    public Map<String, List<String>> attempt(IGraph<String> graph)
+//    {
+//        Set<String> U = new ArrayList<>(graph.vertexCount());
+//        List<String> V = new ArrayList<>(graph.vertexCount());
+//        Map<String, List<String>> edges = new HashMap<>();
+//        createBipartite(graph, U, V, edges);
+//        return runHopCroftKarp(U, V, edges);
+//    }
+
+    public Map<String, List<String>> attemptTree(IGraph<String> graph)
     {
-        List<String> U = new ArrayList<>(graph.vertexCount());
-        List<String> V = new ArrayList<>(graph.vertexCount());
+        Set<String> U = new HashSet<>(graph.vertexCount());
+        Set<String> V = new HashSet<>(graph.vertexCount());
         Map<String, List<String>> edges = new HashMap<>();
         createBipartite(graph, U, V, edges);
-        return runHopCroftKarp(U, V, edges);
+        return runHopCroftKarpTree(U, V, edges);
     }
 
     /**
@@ -27,8 +37,8 @@ public final class SecretSantaSelector {
      * now mapping from U to V (so within U nor V there aren't any edges)
      */
     private void createBipartite(IGraph<String> graph,
-                                 List<String> U,
-                                 List<String> V,
+                                 Set<String> U,
+                                 Set<String> V,
                                  Map<String, List<String>> edges)
     {
         Set<String> vertices = graph.getVertices();
@@ -74,7 +84,12 @@ public final class SecretSantaSelector {
             Set<String> F = new HashSet<>();
             Map<String, List<List<String>>> bfsPaths = new HashMap<>();
             runBFS(U, V, edges, matchedEdges, F, bfsPaths);
-            if(F.isEmpty()) break;
+            if(F.isEmpty()){
+                if(!U.isEmpty() || !V.isEmpty()){
+                    throw new IllegalArgumentException();
+                }
+                break;
+            }
 
             HashSet<String> dfsUsedVertices = new HashSet<>();
             for(String f : F){
@@ -116,6 +131,7 @@ public final class SecretSantaSelector {
                 List<String> path = queue.poll();
                 String last = path.getLast();
                 List<String> nextOptions = UtoV ? unmatched.get(last) : getReverse(last, matched);
+                if(nextOptions == null) continue;
                 for(String next : nextOptions){
                     if(path.contains(next)) continue;
                     List<String> copy = new ArrayList<>(path);
@@ -130,6 +146,102 @@ public final class SecretSantaSelector {
                 }
             }
             if(!F.isEmpty()) return;
+            UtoV  = !UtoV;
+        }
+    }
+
+    private Map<String, List<String>> runHopCroftKarpTree(Set<String> U,
+                                                          Set<String> V,
+                                                          Map<String, List<String>> edges)
+    {
+        Map<String, List<String>> matchedEdges = new HashMap<>();
+        for(String key : edges.keySet()){
+            matchedEdges.put(key, new ArrayList<>());
+        }
+        while(true){
+            List<Node<String>> endpoints = new ArrayList<>();
+            runBFS(U, V, edges, matchedEdges, endpoints);
+            if(endpoints.isEmpty()){
+                if(!U.isEmpty() || !V.isEmpty()){
+                    throw new IllegalArgumentException();
+                }
+                break;
+            }
+
+            HashSet<String> usedVertices = new HashSet<>();
+            for(Node<String> endpoint : endpoints){
+                if(!V.contains(endpoint.value())) continue;
+                Node<String> copy = endpoint.copy();
+                boolean skip = false;
+                boolean UtoV = false;
+                while(copy.parent() != null){
+                    if(usedVertices.contains(copy.value())){
+                        skip = true;
+                        break;
+                    }
+                    copy = copy.parent();
+                    UtoV = !UtoV;
+                }
+                if(usedVertices.contains(copy.value())) skip = true;
+                if(skip) continue;
+                U.remove(copy.value());
+                V.remove(endpoint.value());
+                while(endpoint.parent() != null){
+                    String start = endpoint.value();
+                    String next = endpoint.parent().value();
+                    if(edges.containsKey(next)){
+                        edges.get(next).remove(start);
+                        matchedEdges.get(next).add(start);
+                    }else{
+                        matchedEdges.get(start).remove(next);
+                        edges.get(start).add(next);
+                    }
+                    usedVertices.add(start);
+                    endpoint = endpoint.parent();
+                }
+                usedVertices.add(endpoint.value());
+            }
+        }
+        return matchedEdges;
+    }
+
+    private void runBFS(Set<String> U,
+                        Set<String> V,
+                        Map<String, List<String>> unmatched,
+                        Map<String, List<String>> matched,
+                        List<Node<String>> endpoints)
+    {
+        boolean UtoV = true;
+        Queue<Node<String>> queue = new LinkedList<>();
+        for(String u : U){
+            queue.add(new Node<>(u));
+        }
+        while(!queue.isEmpty()){
+            int queueSize = queue.size();
+            for(int i = 0; i < queueSize; i++){
+                Node<String> node = queue.poll();
+                List<String> nextOptions = UtoV ? unmatched.get(node.value()) : getReverse(node.value(), matched);
+                if(nextOptions == null) continue;
+                for(String next : nextOptions){
+                    Node<String> copy = node.copy();
+                    boolean alreadyVisited = false;
+                    while(copy != null){
+                        if(copy.value().equals(next)){
+                            alreadyVisited = true;
+                            break;
+                        }
+                        copy = copy.parent();
+                    }
+                    if(alreadyVisited) continue;
+                    Node<String> nextNode = new Node<>(node, next);
+                    if(!UtoV || !V.contains(next)){
+                        queue.add(nextNode);
+                    }else{
+                        endpoints.add(nextNode);
+                    }
+                }
+            }
+            if(!endpoints.isEmpty()) return;
             UtoV  = !UtoV;
         }
     }

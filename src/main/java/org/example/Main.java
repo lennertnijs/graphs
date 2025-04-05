@@ -5,41 +5,72 @@ import graph.IGraph;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
 public class Main {
     public static void main(String[] args)
     {
+        //GraphGenerator.generateAndWrite(1_000, "large");
+        runSingleTest();
+    }
+
+    public static void runSingleTest()
+    {
         SecretSantaSelector selector = new SecretSantaSelector();
+        int total = 0;
+        int impossible = 0;
         List<IGraph<String>> graphs = loadGraphs();
-        int count = 0;
-        int total  = 0;
         long start = System.currentTimeMillis();
-        List<Map<String, List<String>>> selections = new ArrayList<>();
-        for(IGraph<String> graph : graphs){
-            Map<String, List<String>> selection;
+        for (IGraph<String> graph : graphs) {
             total++;
-            try{
-                selection = selector.attempt(graph);
-                System.out.println(selection);
-            }catch(Exception e){
-                e.printStackTrace();
-                count++;
+            try {
+                selector.attemptTree(graph);
+            } catch (Exception e) {
+                    impossible++;
             }
         }
+        System.out.printf("Total runtime: %d\n", System.currentTimeMillis() - start);
+        System.out.printf("Unsolvable graphs: %d\n", impossible);
+        System.out.printf("Total amount of graphs: %d\n", total);
+    }
 
-        System.out.println("Duration: " + (System.currentTimeMillis() - start));
-        System.out.println("Duration per graph: " + (float)(System.currentTimeMillis() - start) / total);
-        System.out.println("Impossible ones: " + count);
-        System.out.println("Total ones: " + total);
+    public static void runIterTest()
+    {
+        long total = 0;
+        int tests = 10;
+        int iter = 10;
+        for(int i = 0; i < tests; i++){
+            total += runTest(iter);
+            System.out.println("Iter done");
+        }
+        System.out.printf("Average time for the whole test: %f \n", (float)total / tests);
+        System.out.printf("Total time: %d", total);
+    }
+
+    public static long runTest(int iter)
+    {
+        SecretSantaSelector selector = new SecretSantaSelector();
+        long total = 0;
+        List<IGraph<String>> graphs = loadGraphs();
+        for(int i = 0; i < iter; i++){
+            long start = System.currentTimeMillis();
+            for(IGraph<String> graph : graphs){
+                try{
+                    selector.attemptTree(graph);
+                }catch(Exception e){
+                    // do nothing
+                }
+            }
+            total += (System.currentTimeMillis() - start);
+        }
+        return total;
     }
 
     private static List<IGraph<String>> loadGraphs()
     {
         List<IGraph<String>> graphs = new ArrayList<>();
-        System.out.println(System.getProperty("user.dir"));
+        // System.out.println(System.getProperty("user.dir"));
 
         String filePath = "D:/secret santa/untitled/src/test/java/configurations.csv";
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
